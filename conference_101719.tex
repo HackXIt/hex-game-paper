@@ -15,70 +15,48 @@
 \thanks{Identify applicable funding agency here. If none, delete this.}
 }
 
-\author{\IEEEauthorblockN{1\textsuperscript{st} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+\author{\IEEEauthorblockN{Salome Christiani}
+\IEEEauthorblockA{\textit{FH Technikum Wien} \\
+\textit{Master AI \& Game Engineering}\\
+Wien, AT \\
+ai24m057@technikum-wien.at}
 \and
-\IEEEauthorblockN{2\textsuperscript{nd} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
-\and
-\IEEEauthorblockN{3\textsuperscript{rd} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
-\and
-\IEEEauthorblockN{4\textsuperscript{th} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
-\and
-\IEEEauthorblockN{5\textsuperscript{th} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
-\and
-\IEEEauthorblockN{6\textsuperscript{th} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+\IEEEauthorblockN{Nikolaus Rieder}
+\IEEEauthorblockA{\textit{FH Technikum Wien} \\
+\textit{Master AI \& Game Engineering}\\
+Wien, AT \\
+TODO@technikum-wien.at}
 }
 
 \maketitle
 
 \begin{abstract}
-This document is a model and instructions for \LaTeX.
-This and the IEEEtran.cls file define the components of your paper [title, text, heads, etc.]. *CRITICAL: Do Not Use Symbols, Special Characters, Footnotes, 
-or Math in Paper Title or Abstract.
+This paper presents the development and evaluation of agents for playing the Hex board game. In a first step,  two heuristic, rule-based agents were crafted to provide strong, interpretable baselines; these agents rely on explicit pattern-matching for tactics such as bridging, blocking, and chain extension. They then served as opponents during reinforcement learning experiments. The main objective was to train a Proximal Policy Optimization (PPO) agent that outperforms these rule-based baselines and field our best agent in a class-wide 7x7 Hex board game competition against agents from other teams. While the PPO agent successfully learned to beat random and our rule-based opponents, mastering complex strategies and adapting to stronger opponents remained a challenge: it struggled with defensive awareness as the RL agent sees offence and defence through the same reward lens and thus finds it difficult to decide when to sacrifice progress for an urgent block. Additionally, the RL agent lacked multi-turn strategic planning, often reacting only to the current board state without maintaining continuity in its intended strategies across multiple moves. This work lays the foundation for future improvements through hybrid learning approaches and enhanced evaluation pipelines. The project also included the integration of an interactive visualization framework supporting multiple play modes (human vs. machine, machine vs. machine). 
 \end{abstract}
 
 \begin{IEEEkeywords}
-component, formatting, style, styling, insert
+rule-based, ppo, reinforcement learning
 \end{IEEEkeywords}
 
 \section{Introduction}
-This document is a model and instructions for \LaTeX.
-Please observe the conference page limits. 
+Hex is a deterministic, turn-based connection game with a rich space of possible states, making it a compelling environment for reinforcement learning (RL). Our project aimed to explore two approaches to building agents for Hex:
+\begin{itemize}[\IEEEsetlabelwidth{Z}]
+\item Rule-based agents inspired by human reasoning and heuristics.
+\item A learning-based PPO agent trained using self-play and various opponent configurations.
+\end{itemize}
+This two-fold approach allowed for both interpretable baselines and adaptive learning, which we evaluated in different scenarios. 
 
-\section{Ease of Use}
+\section{Game Engine and Visualisation}
 
-\subsection{Maintaining the Integrity of the Specifications}
+The project included a custom hexPosition class handling the game rules, win conditions, and board representation. A modular visualization framework allowed humans to play against agents, observe matches between agents, and export videos for evaluation. It supported modes like:
+\begin{itemize}[\IEEEsetlabelwidth{Z}]
+\item Human vs. Rule-Based Agent
+\item PPO Agent vs. Rule-Based Agent
+\item PPO Agent vs. Random/Scripted/Past Agents
+\end{itemize}
+The GUI was helpful for debugging agent behavior and qualitatively assessing learned strategies.
 
-The IEEEtran class file is used to format your paper and style the text. All margins, 
-column widths, line spaces, and text fonts are prescribed; please do not 
-alter them. You may note peculiarities. For example, the head margin
-measures proportionately more than is customary. This measurement 
-and others are deliberate, using specifications that anticipate your paper 
-as one part of the entire proceedings, and not as an independent document. 
-Please do not revise any of the current designations.
+TODO(insert graphics)
 
 \section{Prepare Your Paper Before Styling}
 Before you begin to format your paper, first write and save the content as a 
