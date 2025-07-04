@@ -1,0 +1,333 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}  % for \toprule, \midrule, \bottomrule
+\usepackage{caption} % nicer caption formatting
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{Hex Game\\
+}
+
+\author{\IEEEauthorblockN{Salome Christiani}
+\IEEEauthorblockA{\textit{FH Technikum Wien} \\
+\textit{Master AI \& Game Engineering}\\
+Wien, AT \\
+ai24m057@technikum-wien.at}
+\and
+\IEEEauthorblockN{Nikolaus Rieder}
+\IEEEauthorblockA{\textit{FH Technikum Wien} \\
+\textit{Master AI \& Game Engineering}\\
+Wien, AT \\
+ai24m040@technikum-wien.at}
+}
+
+\maketitle
+
+\begin{abstract}
+This paper presents the development and evaluation of agents for playing the Hex board game. In a first step, two rule-based heuristic agents were crafted to provide strong, interpretable baselines; these agents rely on explicit pattern matching for tactics such as bridge, block, and chain extension. They then served as opponents during reinforcement learning experiments. The main objective was to train a Proximal Policy Optimization (PPO) agent that outperforms these rule-based baselines and field our best agent in a class-wide 7x7 Hex board game competition against agents from other teams. While the PPO agent successfully learned to beat random and our rule-based opponents, mastering complex strategies and adapting to stronger opponents remained a challenge: it struggled with defensive awareness, as the RL agent sees offense and defense through the same reward lens and thus finds it difficult to decide when to sacrifice progress for an urgent block. Additionally, the RL agent lacked multi-turn strategic planning, often reacting only to the current board state without maintaining continuity in its intended strategies across multiple moves. This work lays the foundation for future improvements through hybrid learning approaches and enhanced evaluation pipelines. The project also included the integration of an interactive visualization framework that supports multiple play modes (human vs. machine, machine vs. machine). 
+\end{abstract}
+
+\begin{IEEEkeywords}
+rule-based, ppo, reinforcement learning
+\end{IEEEkeywords}
+
+\section{Introduction}
+Hex is a deterministic turn-based connection game with a rich space of possible states, making it a compelling environment for reinforcement learning (RL). Our project aimed to explore two approaches to building agents for Hex:
+\begin{itemize}[\IEEEsetlabelwidth{12}]
+\item Rule-based agents inspired by human reasoning and heuristics.
+\item A learning-based PPO agent trained using self-play and various opponent configurations.
+\end{itemize}
+This two-fold approach allowed for both interpretable baselines and adaptive learning, which we evaluated in different scenarios. 
+
+\section{Game Engine and Visualisation}
+
+The project included a custom hexPosition class that handles game rules, win conditions, and board representation. A modular visualization framework allowed humans to play against agents, observe matches between agents, and export videos for evaluation. It supported modes like:
+\begin{itemize}[\IEEEsetlabelwidth{12}]
+\item Human vs. Rule-Based Agent
+\item PPO Agent vs. Rule-Based Agent
+\item PPO Agent vs. Random/Scripted/Past Agents
+\end{itemize}
+The GUI was helpful for debugging agent behavior and qualitatively assessing learned strategies.
+
+TODO (insert graphics)
+
+\section{Rule-Based Agent}
+Rule-based agents were developed as training opponents for the PPO agent, giving it exposure to more structured and challenging play than random agents could provide. This helped accelerate early learning, ensuring that the reinforcement learner encountered realistic board dynamics from the start.
+\subsection{Architecture and Strategy Framework} \label{ASF}
+Each rule-based agent followed a common structure: Multiple predefined strategies were executed in parallel, each suggesting a move based on the current state of the board. These suggestions were then combined through a weighted voting mechanism, where the weights were adapted depending on the game phase (early, mid, or late). Strategies could be tuned or prioritized differently in versions v3 and v4.\\
+The following strategies were implemented:
+\begin{itemize}[\IEEEsetlabelwidth{12}]
+\item \textbf{Immediate Win Detection} \\
+Checks whether placing a stone in a given cell would result in an immediate win. If such a move exists, it is selected immediately.
+\item \textbf{Block Opponent Win} \\
+Detects whether the opponent has a winning move available and blocks it, preventing an immediate loss.
+\item \textbf{Forcing Win} \\
+Identifies moves that do not directly win but guarantee a win in the next turn, regardless of how the opponent responds.
+\item \textbf{Extend Own Chain} \\
+Finds the agent’s most advanced chain (temp breadth-first search) and attempts to extend it toward its goal edge.
+\item \textbf{Break Opponent Bridge} \\
+Detects typical bridging patterns in the opponent’s formation and inserts a blocking move to disrupt their connectivity.
+\item \textbf{Protect Own Chain from Cut} \\
+Looks for weak points where the agent’s own chain could be severed and reinforces them by placing protective stones.
+\item \textbf{Create Double Threat} \\
+Suggests moves that create two simultaneous threats so that the opponent cannot defend against both in one turn.
+\item \textbf{Shortest Connection Path (via Dijkstra)} \\
+Uses a Dijkstra-based heuristic to compute the shortest potential connection between the agent’s start and goal edges, then selects a move that advances along that path.
+\item \textbf{Take Center} \\
+Prioritizes occupying the central cell (or the nearest available cell to it) early in the game, where flexibility is highest.
+\item \textbf{Advance Toward Goal} \\
+Suggests moves that push the agent’s chain generally closer to the target edge, even if not connected directly.
+\item \textbf{Block Aligned Opponent Path} \\
+Detects lines or near-connections formed by the opponent along their win axis and attempts to block or disrupt their directionality.
+\item \textbf{Mild Block Threat} \\
+Identifies subtle threats by the opponent (such as loose connections) and preemptively interferes before they escalate.
+\end{itemize}
+Each strategy outputs a suggested move or \texttt{None}. Only legal moves from the current \texttt{action\_set} are considered. If multiple strategies propose the same move, their weights are summed, increasing its chance of being selected.
+
+\subsection{Agent Versions}\label{AV}
+To iteratively improve the rule-based baseline, we developed multiple versions—most notably v3 and v4: 
+\begin{itemize}[\IEEEsetlabelwidth{12}]
+\item \textbf{v3 Agent} \\
+Used adaptive weights based on game stage and bridge status.
+\item \textbf{v4 Agent} \\
+Fine-tuned those weights to favor late-game double threats and path alignment blocks.
+\end{itemize}
+Both share the same underlying architecture and strategy set, but differ in how strategy priorities are dynamically adjusted depending on the game phase. The goal was to simulate a human-like shift from early expansion, to mid-game structuring, to late-game precision.
+
+\subsubsection{Game Phases}
+The game board is monitored for the total number of placed stones, allowing the agent to switch behavior based on thresholds:
+\begin{itemize}[\IEEEsetlabelwidth{12}]
+\item \textbf{Opening Phase} \\
+Fewer than ~10\% of board cells filled
+\item \textbf{Mid Game} \\
+Between 10\%–50\% filled
+\item \textbf{End Game} \\
+More than 50\% filled
+\end{itemize}
+\subsubsection{Strategy Weight Encoding}
+Each version encodes relative preferences by assigning weights to each strategy depending on the phase. Each strategy has a fixed \textit{base weight}, referred to as the \textit{ground weight}, which reflects its general importance independent of timing. \\
+Depending on the game phase, some strategies receive boosts or reductions depending on the phase. For example, \texttt{take\_center} is heavily favored on the very first move, while \texttt{create\_double\_threat} and \texttt{block\_aligned\_opponent\_path} are emphasized in the late game. Additionally, if the last move formed a bridge, \texttt{extend\_own\_chain} receives a temporary weight boost in the next turn.
+\begin{table}[htbp]
+\caption{Ground (base) weights for all strategies in rule-based agent \texttt{v3}.}
+\begin{center}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Strategy} & \textbf{Ground Weight} \\
+\hline
+\texttt{take\_center}                   & 1  \\
+\texttt{extend\_own\_chain}             & 3  \\
+\texttt{break\_opponent\_bridge}        & 3  \\
+\texttt{protect\_own\_chain\_from\_cut} & 3  \\
+\texttt{create\_double\_threat}         & 4  \\
+\texttt{shortest\_connection}           & 4  \\
+\texttt{make\_own\_bridge}              & 3  \\
+\texttt{mild\_block\_threat}            & 2  \\
+\texttt{advance\_toward\_goal}          & 2  \\
+\texttt{block\_aligned\_opponent\_path} & 3  \\
+\hline
+\end{tabular}
+\label{tab:ground_weights}
+\end{center}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Phase-dependent strategy weights for rule-based agent \texttt{v3}.}
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Strategy} & \textbf{First} & \textbf{Early} & \textbf{Mid} & \textbf{Late} \\
+\hline
+\texttt{take\_center}                   & 11 & 1  & 1  & 1   \\
+\texttt{extend\_own\_chain}$^{\mathrm{a}}$        & 3  & 3  & 3  & 5   \\
+\texttt{break\_opponent\_bridge}        & 3  & 3  & 6  & 3   \\
+\texttt{protect\_own\_chain\_from\_cut} & 3  & 3  & 6  & 3   \\
+\texttt{create\_double\_threat}         & 4  & 4  & 4  & 4   \\
+\texttt{shortest\_connection}           & 4  & 4  & 4  & 8   \\
+\texttt{make\_own\_bridge}              & 3  & 6  & 3  & 3   \\
+\texttt{mild\_block\_threat}            & 2  & 2  & 12 & 2   \\
+\texttt{advance\_toward\_goal}          & 2  & 3  & 3  & 7   \\
+\texttt{block\_aligned\_opponent\_path} & 3  & 3  & 7  & 8   \\
+\hline
+\multicolumn{5}{l}{$^{\mathrm{a}}$Weight is further increased if the previous move formed a bridge.}
+\end{tabular}
+\label{tab:rulebased_v3_weights}
+\end{center}
+\end{table}
+\subsubsection{Difference between v3 and v4 agents}
+\begin{itemize}[\IEEEsetlabelwidth{12}]
+\item v3 is balanced and leans toward tactical responses (e.g., cutting chains, extending own path).
+\item v4 places greater emphasis on late-game disruption, especially against aligned opponent chains and in recognizing multiple threats.
+\end{itemize}
+
+\section{PPO Reinforcement Learning Agent}
+
+The PPO (Proximal Policy Optimization) agent was implemented using the \texttt{MaskablePPO} algorithm from the \texttt{sb3\_contrib} library. The agent was trained in a self-play environment with configurable opponents, including random, rule-based v3, and rule-based v4 agents.
+
+\subsection{Architecture}
+
+The agent observes the board using a 3-channel tensor representation:
+\begin{itemize}
+    \item Channel 1: Player 1's stones (white)
+    \item Channel 2: Player -1's stones (black)
+    \item Channel 3: A constant plane indicating the current player's turn
+\end{itemize}
+
+The policy network includes:
+\begin{itemize}
+    \item A custom CNN feature extractor (\texttt{HexCNN})
+    \item A fully connected MLP head
+    \item An action head producing logits over the 49 board positions (7x7)
+\end{itemize}
+
+Only legal moves are allowed via action masking. Illegal actions are given a probability of zero at inference time.
+
+\subsection{Training Setup}
+
+Training was coordinated via \texttt{train\_alg\_hex.py}, dispatching to \texttt{ppo\_train.py}. Key hyperparameters:
+
+\begin{itemize}
+    \item Board size: 7x7
+    \item PPO algorithm: \texttt{MaskablePPO}
+    \item Parallel environments: up to 16
+    \item Opponent mix: configurable (e.g., 50\% rule-based, 50\% random)
+    \item Reward shaping: customized per experiment
+\end{itemize}
+
+Evaluation was performed regularly against fixed opponents and optionally recorded as video.
+
+\subsection{Model Export}
+
+Trained agents could be exported in two formats:
+\begin{itemize}
+    \item TorchScript format (\texttt{policy.pt}) using \texttt{export\_tscript.py}
+    \item SB3 model checkpoint (\texttt{model.zip}) for live loading
+\end{itemize}
+These formats were integrated into evaluation agents such as \texttt{sb3\_agent.py} and \texttt{tscript\_agent.py}.
+
+\section{Experiments}
+
+We conducted a series of experiments to evaluate PPO agent performance and learning progression. Each experiment had a distinct training setup and reward scheme. Unless otherwise noted, agents were trained for 2000–12000 games.
+
+\subsection{Experiment 1: Fixed Side vs. Random}
+
+The agent played only as one color (e.g., white) against a random opponent. Reward shaping included:
+\begin{itemize}
+    \item +1 for winning
+    \item Penalty: $0.01 \times$ number of moves used
+\end{itemize}
+This setup favored fast convergence but failed to generalize when switching sides.
+
+\subsection{Experiment 2: Alternating Sides}
+
+The agent alternated between white and black every 200 games. This improved generalization but slowed down convergence due to side-switching. The reward structure remained the same as in Experiment 1.
+
+\subsection{Experiment 3: Phased Side Training + Self-Play}
+
+The agent played the first 1500 games as white and the next 1500 as black, initially against a random opponent. Then, it trained against the best model of the previous phase. This setup aimed to gradually improve robustness and adaptivity.
+
+\subsection{Experiment 4: Curriculum Learning via Board Size}
+
+The agent started training on a 3x3 board and progressively moved to 7x7, increasing the board size every 250 games. This curriculum approach helped the agent discover high-level strategies in simpler environments first.
+
+\subsection{Experiment 5: Two-Agent Self-Play}
+
+Two PPO agents were initialized and trained by playing against each other for 12,000 games. They alternated in learning every 100 games and switched sides every 50 games. A broad reward structure was used, including:
+\begin{itemize}
+    \item +10 for winning, -10 for losing
+    \item +3 for blocking, +2.5 for connecting
+    \item Penalties for missing clear blocks
+    \item Entropy bonus to prevent determinism
+\end{itemize}
+
+\subsection{Experiment 6: Phased Best-vs-Best Training}
+
+The agent trained in 12 sequential phases of 1000 games each. In every new phase, the agent played against the best version from the previous phase. Every fourth phase included random opponents to avoid overfitting. Rewards:
+\begin{itemize}
+    \item $20 + 5 \cdot \left(\frac{7}{\text{moves}}\right)^2$ for winning
+    \item +2 for connecting, +1 for blocking
+    \item -30 for losing
+\end{itemize}
+At the end, all 12 agents were evaluated in round-robin to identify the strongest.
+
+\section{Results and Discussion}
+
+\subsection{Performance Against Random Opponents}
+
+All PPO agents reached high win rates against random agents. In Experiment 1, the fixed-side agent achieved over 90\% win rate as white and around 87\% as black. However, when forced to switch sides, it often failed to adapt and played as if it were still on the original side. This confirmed that training exclusively on one perspective hinders generalization.
+
+\subsection{Effect of Alternating Sides and Self-Play}
+
+Experiment 2 improved generalization, but introduced instability due to frequent side-switching. Experiment 3's phased approach helped maintain continuity, and training against one's own previous best (self-play) in Experiments 3 and 6 led to modest improvements in adaptability.
+
+\subsection{Curriculum Learning and Two-Agent Play}
+
+Experiment 4 demonstrated the benefits of curriculum learning: the agent learned faster when starting on small boards and gradually increasing complexity. Experiment 5, which featured two agents learning together in self-play, showed richer, more varied gameplay and slightly higher resilience when facing novel opponents.
+
+\subsection{Best-vs-Best Phase Training Results}
+
+Experiment 6 yielded the most robust agents. Phased competition against previous bests created a natural curriculum. However, final round-robin evaluation revealed that performance peaked mid-way through training. Later agents tended to overfit to the last opponent, losing general adaptability.
+
+\subsection{Observed Weaknesses}
+
+Despite some success, PPO agents consistently showed two major weaknesses:
+\begin{enumerate}
+    \item \textbf{Lack of Defensive Awareness:} Agents rarely blocked straightforward winning threats from the opponent unless such moves aligned with their own immediate strategy.
+    \item \textbf{No Multi-Turn Planning:} Unlike rule-based agents which simulate continuity, PPO agents appeared reactive: they optimized for the current board state only and failed to follow through on long-term strategies unless guided by dense rewards.
+\end{enumerate}
+
+Manual test games confirmed that PPO agents often ignored near-wins by the opponent and failed to exploit guaranteed winning positions. Visual inspection also showed repeated deterministic openers and suboptimal mid-game responses.
+
+\section{Conclusion and Future Work}
+
+This project explored the design of both rule-based and reinforcement learning agents for the game of Hex. We implemented a modular framework with a visual interface, allowing easy evaluation of agents in human and agent-vs-agent modes.
+
+Our rule-based agents provided interpretable and reliable performance using weighted heuristic strategies, with dynamic tuning across game phases. These agents also served as structured opponents for the PPO agent during training.
+
+We trained multiple PPO agents using self-play, curriculum learning, and phased best-vs-best setups. While agents learned to win consistently against random players, they struggled to match the strategic depth and awareness of rule-based opponents.
+
+\subsection*{Key Takeaways}
+\begin{itemize}
+    \item Rule-based agents offered stable baselines and accelerated PPO learning.
+    \item Curriculum learning (board-size and opponent difficulty) helped early convergence.
+    \item Dense and informative rewards were essential for meaningful PPO behavior.
+    \item Reinforcement learning agents lacked strategic continuity and defensive reasoning.
+\end{itemize}
+
+\subsection*{Future Work}
+
+To bridge the gap between tactical awareness and long-term planning, future efforts could include:
+\begin{itemize}
+    \item Hybrid models that combine rule-based priors with learned policy gradients.
+    \item Incorporation of look-ahead mechanisms or Monte Carlo Tree Search.
+    \item Enhanced reward shaping based on threat detection or plan consistency.
+    \item Evaluation via Elo-style agent tournaments or curriculum-leveled tests.
+\end{itemize}
+
+The codebase and evaluation infrastructure built during this project lay the foundation for further work on interpretable and competitive Hex agents.
+
+\section*{Acknowledgment}
+
+We would like to express our sincere gratitude to our instructor, \textbf{De Oliveira Gomes Rosana}, for their valuable guidance, insightful feedback, and continuous support throughout this project. Their expertise and encouragement played a crucial role in shaping both our technical approach and understanding of reinforcement learning in strategic games. 
+
+
+\begin{thebibliography}{00}
+\bibitem{b1} G. Eason, B. Noble, and I. N. Sneddon, ``On certain integrals of Lipschitz-Hankel type involving products of Bessel functions,'' Phil. Trans. Roy. Soc. London, vol. A247, pp. 529--551, April 1955.
+\bibitem{b2} J. Clerk Maxwell, A Treatise on Electricity and Magnetism, 3rd ed., vol. 2. Oxford: Clarendon, 1892, pp.68--73.
+\bibitem{b3} I. S. Jacobs and C. P. Bean, ``Fine particles, thin films and exchange anisotropy,'' in Magnetism, vol. III, G. T. Rado and H. Suhl, Eds. New York: Academic, 1963, pp. 271--350.
+\bibitem{b4} K. Elissa, ``Title of paper if known,'' unpublished.
+\bibitem{b5} R. Nicole, ``Title of paper with only first word capitalized,'' J. Name Stand. Abbrev., in press.
+\bibitem{b6} Y. Yorozu, M. Hirano, K. Oka, and Y. Tagawa, ``Electron spectroscopy studies on magneto-optical media and plastic substrate interface,'' IEEE Transl. J. Magn. Japan, vol. 2, pp. 740--741, August 1987 [Digests 9th Annual Conf. Magnetics Japan, p. 301, 1982].
+\bibitem{b7} M. Young, The Technical Writer's Handbook. Mill Valley, CA: University Science, 1989.
+\end{thebibliography}
+\vspace{12pt}
+\color{red}
+
+\end{document}
