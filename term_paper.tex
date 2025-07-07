@@ -32,7 +32,7 @@ ai24m040@technikum-wien.at}
 \maketitle
 
 \begin{abstract}
-This paper presents the development and evaluation of agents for playing the Hex board game. We explore two distinct approaches: first, crafting strong, interpretable rule-based heuristic agents that serve as robust baselines, and second, training a learning-based agent using Proximal Policy Optimization (PPO). The rule-based agents employ a sophisticated weighted voting system over a set of tactical and strategic heuristics, such as bridge detection, pathfinding, and threat analysis. These agents were then utilized as opponents in a curriculum learning setup for the PPO agent. The main objective was to train a PPO agent capable of outperforming these heuristic baselines, with the ultimate goal of competing in a class-wide 7x7 Hex tournament. Our findings indicate that while the PPO agent successfully learned to defeat random and our bespoke rule-based opponents, it struggled with defensive awareness and long-term strategic planning, often failing to recognize and block opponent threats. This work highlights the challenges of learning complex game strategies from sparse rewards and lays the foundation for future improvements through hybrid learning approaches. The project also features a modular, interactive visualization framework to support development, debugging, and evaluation across various play modes.
+This paper presents the development and evaluation of agents for playing the Hex board game. We explore two distinct approaches: first, crafting strong, interpretable rule-based heuristic agents that serve as robust baselines, and second, training a learning-based agent using Proximal Policy Optimization (PPO). Rule-based agents employ a sophisticated weighted voting system on a set of tactical and strategic heuristics, such as bridge detection, pathfinding, and threat analysis. These agents were then utilized as opponents in a curriculum learning setup for the PPO agent. The main objective was to train a PPO agent capable of outperforming these heuristic baselines, with the ultimate goal of competing in a class-wide 7x7 Hex tournament. Our findings indicate that while the PPO agent successfully learned to defeat random and our bespoke rule-based opponents, it struggled with defensive awareness and long-term strategic planning, often failing to recognize and block opponent threats. This work highlights the challenges of learning complex game strategies from sparse rewards and lays the foundation for future improvements through hybrid learning approaches. The project also features a modular, interactive visualization framework to support development, debugging, and evaluation across various play modes.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -42,7 +42,7 @@ Hex, Reinforcement Learning, Proximal Policy Optimization (PPO), Rule-Based Syst
 \section{Introduction}
 Hex is a two-player, zero-sum, perfect information connection game with a surprisingly high strategic depth despite its simple rules \cite{b1}. This makes it an ideal testbed for exploring artificial intelligence techniques. The game's large state space and the subtle nature of its strategies present a compelling challenge for both classical AI and modern machine learning approaches.
 
-This project undertakes a comparative study of two primary paradigms for creating Hex-playing agents. The first is a classical, knowledge-based approach, resulting in the development of sophisticated \textbf{rule-based agents}. These agents are designed to mimic human-like heuristics and tactical reasoning, providing a strong, interpretable baseline for performance. The second approach leverages state-of-the-art \textbf{Reinforcement Learning (RL)}, specifically Proximal Policy Optimization (PPO), to train an agent from experience. The motivation for this dual approach is to understand the trade-offs between engineered knowledge and learned policies. While rule-based systems are transparent and can be finely tuned, they are limited by the explicit knowledge encoded by their creators. In contrast, RL agents have the potential to discover novel, superhuman strategies but often act as "black boxes" and can struggle to learn fundamental concepts like defense without careful reward shaping and extensive training.
+This project undertakes a comparative study of two primary paradigms for creating Hex-playing agents. The first is a classical knowledge-based approach, resulting in the development of sophisticated \textbf{rule-based agents}. These agents are designed to mimic human-like heuristics and tactical reasoning, providing a strong, interpretable baseline for performance. The second approach leverages state-of-the-art \textbf{Reinforcement Learning (RL)}, specifically Proximal Policy Optimization (PPO), to train an agent from experience. The motivation for this dual approach is to understand the trade-offs between engineered knowledge and learned policies. While rule-based systems are transparent and can be finely tuned, they are limited by the explicit knowledge encoded by their creators. In contrast, RL agents have the potential to discover novel, superhuman strategies but often act as "black boxes" and can struggle to learn fundamental concepts like defense without careful reward shaping and extensive training.
 
 Our primary goal was to develop a PPO agent that could not only learn the game but also surpass the performance of our own handcrafted rule-based systems. These rule-based agents served a dual purpose: as a benchmark for performance and as structured, challenging opponents during the RL training process, creating a curriculum to guide the learning agent. This paper details the architecture of both agent types, the experimental setup for training the PPO agent, and a thorough analysis of the results, culminating in a discussion of the observed strengths and weaknesses of each approach.
 
@@ -54,9 +54,9 @@ At the core of the project is a custom game engine, encapsulated in the \texttt{
 
 To facilitate development, debugging, and analysis, we integrated a visualization framework using Pygame. This GUI provides an interactive board where one can:
 \begin{itemize}
-    \item Play against any of the developed agents (human-vs-machine).
-    \item Observe matches between two agents (machine-vs-machine).
-    \item Step through games move by move or let them play out automatically.
+    \item Play against any of the developed agents (human vs. machine).
+    \item Observe matches between two agents (machine vs. machine).
+    \item Step through games move-by-move or let them play out automatically.
     \item Export videos of gameplay for later review.
 \end{itemize}
 This interactive tool proved invaluable for qualitatively assessing agent behavior and identifying strategic flaws.
@@ -69,7 +69,7 @@ This interactive tool proved invaluable for qualitatively assessing agent behavi
 \end{figure}
 
 \subsection{Rule-Based Heuristic Agents}
-We developed two primary versions of a rule-based agent, \texttt{v3} and \texttt{v4}, to serve as strong baselines and as training opponents for the RL agent. These agents are not based on simple, hardcoded rules but on a dynamic, weighted evaluation of multiple strategic heuristics.
+We developed two primary versions of a rule-based agent, \texttt{v3} and \texttt{v4}, to serve as strong baselines and training opponents for the RL agent. These agents are not based on simple, hardcoded rules but on a dynamic, weighted evaluation of multiple strategic heuristics.
 
 \subsubsection{Strategy Framework}
 The core of the rule-based agents is a collection of functions, each representing a specific tactical or strategic concept in Hex. At each turn, every strategy function is called to suggest a move. The main strategies include:
@@ -78,13 +78,13 @@ The core of the rule-based agents is a collection of functions, each representin
     \item \textbf{Forcing Moves:} Identifies moves that guarantee a win within the next two turns.
     \item \textbf{Pathfinding and Connectivity:}
           \begin{itemize}
-              \item \textit{Shortest Connection Path:} Uses a Numba-accelerated Dijkstra's algorithm to find the shortest potential path to the goal and suggests moves along it.
+              \item \textit{Shortest Connection Path:} Uses a Numba-accelerated Dijkstra algorithm to find the shortest potential path to the goal and suggests moves along it.
               \item \textit{Extend Own Chain:} Identifies the agent's most promising chain and extends it.
               \item \textit{Protect Own Chain from Cut:} Reinforces weak points in the agent's own connection.
           \end{itemize}
     \item \textbf{Bridge Tactics:}
           \begin{itemize}
-              \item \textit{Make Own Bridge:} Proactively creates bridge patterns to form robust connections \cite{b5}.
+              \item \textit{Make Own Bridge:} Create bridge patterns actively to form robust connections \cite{b5}.
               \item \textit{Break Opponent Bridge:} Identifies and blocks the opponent's bridge formations.
           \end{itemize}
     \item \textbf{Positional and Threat-Based Heuristics:}
@@ -142,7 +142,7 @@ To assess the performance of our agents and the effectiveness of our training me
     \item \textbf{Methodology:} The \texttt{SideSwapWrapper} was used to randomly assign the agent to be Player 1 or Player 2 in each episode. The opponent pool remained 100\% random. The agent was trained for 500 thousand timesteps.
 \end{itemize}
 
-\subsection{Experiment 3 & 4: Curriculum Learning with Rule-Based Opponents}
+\subsection{Experiments 3 and 4: Curriculum Learning with Rule-Based Opponents}
 \begin{itemize}
     \item \textbf{Objective:} To test the hypothesis that training against a curriculum of increasingly strategic opponents improves final performance.
     \item \textbf{Methodology:} Two experiments were run using the \texttt{SideSwapWrapper}.
